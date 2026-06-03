@@ -35,6 +35,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # First 8 characters of the commit hash, used as an image tag.
+      - name: Short commit SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA:0:8}" >> "$GITHUB_OUTPUT"
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -45,6 +50,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=sha
+            type=raw,value=${{ steps.vars.outputs.short_sha }}
             type=raw,value=latest,enable={{is_default_branch}}
 
       # The Dockerfile runs `mvn install` (install the deps and build in the image build),
