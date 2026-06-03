@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="CONSOLE_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{%-5level}{FATAL=red, ERROR=red,
+            WARN=yellow, INFO=green, DEBUG=cyan, TRACE=blue} [%style{%20.20t}{magenta}] %style{%logger}{cyan} -
+            %msg%n%throwable
+        </Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}" disableAnsi="false"/>
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="org.openprojectx" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!--        <Logger name="org.apache.spark.scheduler" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.spark.scheduler.TaskSchedulerImpl" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.spark.ExecutorAllocationManager" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.spark.deploy.k8s" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.spark.scheduler.cluster.k8s" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.iceberg" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.iceberg.rest" level="DEBUG"/>-->
+        <!--        <Logger name="org.apache.hadoop.hive" level="DEBUG"/>-->
+
+        <Logger name="org.apache.hadoop.util" level="TRACE"/>
+
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

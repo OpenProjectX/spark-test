@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.openprojectx.bigdata.test.example</groupId>
+        <artifactId>spark-test-parent</artifactId>
+        <version>0.1.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>spark-cloudera</artifactId>
+    <name>spark-cloudera</name>
+    <description>Runs the shared Spark example against the Cloudera Spark / Hadoop dependency line.</description>
+
+    <properties>
+        <!-- Versions resolved from the clouderaSparkRuntimeClasspath Gradle configuration -->
+        <spark.version>3.3.2.3.3.7190.9-1</spark.version>
+        <hadoop.version>3.1.1.7.1.9.14-2</hadoop.version>
+        <iceberg.spark.runtime.artifactId>iceberg-spark-runtime-3.3_${scala.binary.version}</iceberg.spark.runtime.artifactId>
+        <iceberg.spark.runtime.version>1.8.1</iceberg.spark.runtime.version>
+        <log4j.slf4j.version>2.18.0</log4j.slf4j.version>
+    </properties>
+
+    <dependencies>
+        <!-- shared scenario + test class + resources -->
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.example</groupId>
+            <artifactId>spark-test-common</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- bigdata-test framework -->
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.core</groupId>
+            <artifactId>junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.core</groupId>
+            <artifactId>extensions</artifactId>
+            <scope>test</scope>
+            <!-- These are Apache Hadoop 3.4.2 shaded clients; their core-default.xml uses
+                 duration strings (e.g. fs.s3a.threads.keepalivetime=60s) that the Cloudera
+                 Hadoop 3.1.1 S3A code cannot parse. Drop them so Cloudera Spark's own
+                 Hadoop 3.1.1 (plain-number core-default.xml) is the single Hadoop on the
+                 classpath for this line. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client-runtime</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Spark (Cloudera line) -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql-kafka-0-10_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-avro_${scala.binary.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Hadoop AWS (Cloudera line) -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Iceberg -->
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>${iceberg.spark.runtime.artifactId}</artifactId>
+            <version>${iceberg.spark.runtime.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-aws-bundle</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- GCS connector -->
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcs-connector</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcsio</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>util-hadoop</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- logging -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>${log4j.slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- java-dns agent jar (attached to the Surefire JVM to redirect the fake-gcs host) -->
+        <dependency>
+            <groupId>org.openprojectx.java.dns</groupId>
+            <artifactId>core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Exposes ${org.openprojectx.java.dns:core:jar} = path to the agent jar for the argLine. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>resolve-agent-jar</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Extracts the bundled Hadoop native libs and prepends -Djava.library.path /
+                 -Dhadoop.home.dir to the argLine property (consumed below via @{argLine}). -->
+            <plugin>
+                <groupId>org.openprojectx.hadoop.native.loader.core</groupId>
+                <artifactId>maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>extract</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${org.openprojectx.java.dns:core:jar}=hosts=fake-gcs/127.0.0.1;fallback=true ${bigdata.test.argLine}</argLine>
+                    <dependenciesToScan>
+                        <dependency>org.openprojectx.bigdata.test.example:spark-test-common</dependency>
+                    </dependenciesToScan>
+                    <includes>
+                        <include>**/SparkBigDataTestExample.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

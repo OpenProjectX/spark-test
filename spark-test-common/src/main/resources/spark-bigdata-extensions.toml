@@ -1,0 +1,15 @@
+[s3Jceks]
+enabled = true
+hdfsDir = "/bigdata-test/spark"
+fileName = "s3.jceks"
+
+[kafkaAvro]
+enabled = true
+
+[[kafkaAvro.topics]]
+name = "spark-avro-events"
+schema = "classpath:schemas/spark-event.avsc"
+records = [
+  { key = "alpha", value = { id = 1, name = "alpha" } },
+  { key = "beta", value = { id = 2, name = "beta" } },
+]

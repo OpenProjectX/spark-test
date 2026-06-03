@@ -1,0 +1,6 @@
+[services]
+hiveMetastore = true
+
+[hiveMetastoreTls]
+enabled = true
+domain = "localhost"

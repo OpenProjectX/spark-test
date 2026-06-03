@@ -1,0 +1,11 @@
+[services]
+kerberos = true
+hiveMetastore = true
+kafkaKerberos = true
+
+[ports]
+kafka = 19092
+
+[hiveMetastoreTls]
+enabled = true
+domain = "localhost"

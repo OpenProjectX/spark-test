@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.openprojectx.bigdata.test.example</groupId>
+        <artifactId>spark-test-parent</artifactId>
+        <version>0.1.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>spark-test-common</artifactId>
+    <name>spark-test-common</name>
+    <description>
+        Shared Spark scenario, JUnit 5 test class and test resources. The two runtime modules
+        (spark-apache, spark-cloudera) execute these tests against their own Spark/Hadoop lines via
+        the Surefire dependenciesToScan mechanism, so the test code lives here exactly once.
+    </description>
+
+    <!--
+        Every dependency here is `provided`: it is only needed to compile the shared code.
+        The actual versions that run the tests are supplied by each runtime module, which keeps
+        this module free of any transitive Spark/Hadoop runtime so the two lines never collide.
+        Compilation is done against the Apache line (Spark 3.5 / Hadoop 3.4).
+    -->
+    <properties>
+        <compile.spark.version>3.5.7</compile.spark.version>
+        <compile.hadoop.version>3.4.2</compile.hadoop.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.core</groupId>
+            <artifactId>junit5</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.core</groupId>
+            <artifactId>extensions</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-sql_${scala.binary.version}</artifactId>
+            <version>${compile.spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-hive_${scala.binary.version}</artifactId>
+            <version>${compile.spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client-api</artifactId>
+            <version>${compile.hadoop.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

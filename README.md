@@ -1,0 +1,101 @@
+# spark-test
+
+A Maven + Java port of the bigdata-test Spark JUnit 5 example
+([`bigdata-test/example/spark`](../bigdata-test/example/spark)). It runs the same end-to-end
+Spark scenario against **two dependency lines** — Apache Spark/Hadoop and Cloudera
+Spark/Hadoop — using the [`bigdata-test`](../bigdata-test) framework published locally as
+`0.1.1-SNAPSHOT`.
+
+## What the test does
+
+`SparkBigDataScenario` spins up the bigdata-test containers (HDFS, Hive Metastore, Kafka,
+LocalStack S3, fake-gcs, Kerberos KDC) and a local Spark session, then verifies:
+
+- an HDFS-backed S3 JCEKS credential store exists;
+- an Avro Kafka source can be read (Kerberos/SASL + TLS aware);
+- Iceberg tables can be created and queried on **S3**, a **local GCS** warehouse, and the **HMS**
+  catalog (with the Iceberg table also asserted directly against the Hive Metastore);
+- Hive **external Parquet** tables can be written/read on **S3** and **GCS**, asserted against the
+  Hive Metastore.
+
+The concrete `SparkBigDataTestExample` runs with the `cloudera-hms-kerberos` configuration, matching
+the default test in the original Gradle example.
+
+## Module layout
+
+| Module               | Purpose                                                                                   |
+|----------------------|-------------------------------------------------------------------------------------------|
+| `spark-test-common`  | The shared scenario, the `SparkBigDataTestExample` test class, and the test resources (TOML/Avro/log4j2). Holds the test code exactly once. |
+| `spark-apache`       | Runs the shared test against the **Apache** line (Spark 3.5.7 / Hadoop 3.4.2 / Iceberg 1.11.0). |
+| `spark-cloudera`     | Runs the shared test against the **Cloudera** line (Spark 3.3.2.3.3.7190.9-1 / Hadoop 3.1.1.7.1.9.14-2 / Iceberg 1.8.1). |
+
+`spark-test-common` declares its Spark/Hadoop dependencies as `provided` (compile-only). Each
+runtime module supplies the real versions and re-runs the shared test via the Surefire
+[`dependenciesToScan`](https://maven.apache.org/surefire/maven-surefire-plugin/examples/inclusion-exclusion.html)
+mechanism, so the two lines never collide on the classpath.
+
+The dependency versions were taken from the original Gradle project:
+
+```bash
+GRADLE_USER_HOME=/data/.gradle ./gradlew :example:spark:dependencies \
+  --configuration apacheSparkRuntimeClasspath
+GRADLE_USER_HOME=/data/.gradle ./gradlew :example:spark:dependencies \
+  --configuration clouderaSparkRuntimeClasspath
+```
+
+## Plugins
+
+- **[hadoop-native-loader](../hadoop-native-loader) `0.1.4`** — its `extract` goal unpacks the
+  bundled Hadoop native libraries and prepends `-Djava.library.path` / `-Dhadoop.home.dir` to the
+  Surefire `argLine`, so the native Hadoop code is used instead of the pure-Java fallback.
+- **[java-dns](../java-dns) `0.1.1`** — the agent jar (`org.openprojectx.java.dns:core`) is attached
+  to the Surefire JVM via `-javaagent:…=hosts=fake-gcs/127.0.0.1`. This redirects the `fake-gcs`
+  host to the local container, so the GCS connector can use the stable URL
+  `http://fake-gcs:4443/` and the test **no longer needs to read the dynamic GCS endpoint**. The
+  fake-gcs container is bound to the fixed host port `4443` via `[ports] fakeGcs = 4443` in
+  `spark-bigdata-test-common.toml` so the redirected host:port lines up.
+
+## Prerequisites
+
+- JDK 17
+- Maven 3.9.x
+- Docker (Testcontainers spins up the bigdata-test services)
+- The `bigdata-test` framework installed locally as `0.1.1-SNAPSHOT`
+  (`./gradlew publishToMavenLocal` in the bigdata-test checkout). The `java-dns` and
+  `hadoop-native-loader` released plugin versions resolve from the configured remote repositories.
+
+This build honours your user `~/.m2/settings.xml` (proxy + mirrors); run Maven outside any sandbox
+so it can reach the network.
+
+## Dependency convergence notes
+
+Gradle resolves version conflicts to the **highest** requested version; Maven uses **nearest-wins**.
+A few places therefore need an explicit pin/exclusion in Maven that Gradle handled automatically:
+
+- **`jackson-annotations` → 2.15.2** (parent `dependencyManagement`). Cloudera Spark requests
+  `2.12.7`, whose `JsonFormat.Feature` lacks `READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE` that
+  Testcontainers 2.0.4's shaded Jackson needs. 2.15.2 is Apache Spark 3.5's Jackson line.
+  `jackson-databind`/`jackson-core` are left at each Spark line's own version.
+- **`spark-apache`: pin `slf4j-api` → 2.0.17.** The Apache line pulls both the SLF4J 1.7 binding
+  (`log4j-slf4j-impl`) and the 2.0 binding (`log4j-slf4j2-impl`); nearest-wins would keep
+  `slf4j-api:1.7.25` and the 2.0 binding then fails on `org.slf4j.spi.LoggingEventBuilder`.
+- **`spark-cloudera`: exclude `hadoop-client-api`/`hadoop-client-runtime` from `extensions`.**
+  Those are Apache Hadoop 3.4.2 shaded clients whose `core-default.xml` uses duration strings
+  (`fs.s3a.threads.keepalivetime=60s`) that Cloudera's Hadoop 3.1.1 S3A code parses as a plain
+  number. Excluding them leaves Cloudera Spark's own Hadoop 3.1.1 as the single Hadoop on the line.
+
+Both modules pass the full scenario (`Tests run: 1, Failures: 0, Errors: 0`) against a local Docker.
+
+## Build & run
+
+```bash
+# compile everything and install spark-test-common into the local repo
+mvn install -DskipTests
+
+# run the full scenario on each line (requires Docker)
+mvn -pl spark-apache test
+mvn -pl spark-cloudera test
+
+# or both
+mvn test
+```

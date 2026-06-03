@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.openprojectx.bigdata.test.example</groupId>
+    <artifactId>spark-test-parent</artifactId>
+    <version>0.1.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>spark-test-parent</name>
+    <description>Maven Java port of the bigdata-test Spark JUnit 5 example, with Apache and Cloudera Spark modules.</description>
+
+    <modules>
+        <module>spark-test-common</module>
+        <module>spark-apache</module>
+        <module>spark-cloudera</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- bigdata-test framework, published locally as 0.1.1-SNAPSHOT -->
+        <bigdata-test.version>0.1.1-SNAPSHOT</bigdata-test.version>
+
+        <!-- shared, version-line independent dependencies -->
+        <junit.version>5.11.4</junit.version>
+        <scala.binary.version>2.12</scala.binary.version>
+        <gcs.version>4.0.4</gcs.version>
+        <iceberg.aws.bundle.version>1.8.1</iceberg.aws.bundle.version>
+        <confluent.version>8.2.1</confluent.version>
+
+        <!-- plugins -->
+        <surefire.version>3.5.2</surefire.version>
+        <hadoop-native-loader.version>0.1.4</hadoop-native-loader.version>
+        <java-dns.version>0.1.1</java-dns.version>
+
+        <!-- forked test JVM options mirrored from the Gradle example -->
+        <bigdata.test.argLine>--add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED -Xms2048m -Xmx8192m</bigdata.test.argLine>
+    </properties>
+
+    <repositories>
+        <!-- Maven Central first (mirrored to the fast tencent nexus by ~/.m2/settings.xml);
+             the Cloudera/Confluent repos are only consulted for artifacts not on Central. -->
+        <repository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>cloudera</id>
+            <url>https://repository.cloudera.com/repository/cloudera-repos/</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+    </repositories>
+
+    <dependencyManagement>
+        <dependencies>
+                <!-- Pin jackson-annotations to Apache Spark 3.5's Jackson line (2.15.2). Maven's
+                 nearest-wins would otherwise select Cloudera Spark's 2.12.7, whose
+                 JsonFormat.Feature lacks READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE that
+                 Testcontainers 2.0.4's shaded Jackson requires. Annotations are forward
+                 compatible, and jackson-databind/core are intentionally left at each Spark
+                 line's own version. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>2.15.2</version>
+            </dependency>
+
+            <!-- bigdata-test framework (local 0.1.1-SNAPSHOT) -->
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>junit5</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>extensions</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
+            <!-- java-dns agent jar, attached to the Surefire JVM to redirect GCS DNS -->
+            <dependency>
+                <groupId>org.openprojectx.java.dns</groupId>
+                <artifactId>core</artifactId>
+                <version>${java-dns.version}</version>
+            </dependency>
+
+            <!-- JUnit 5 -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- GCS connector (version-line independent) -->
+            <dependency>
+                <groupId>com.google.cloud.bigdataoss</groupId>
+                <artifactId>gcs-connector</artifactId>
+                <version>${gcs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud.bigdataoss</groupId>
+                <artifactId>gcsio</artifactId>
+                <version>${gcs.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud.bigdataoss</groupId>
+                <artifactId>util-hadoop</artifactId>
+                <version>${gcs.version}</version>
+            </dependency>
+
+            <!-- Iceberg AWS bundle (pinned to 1.8.1 by the Spark platform BOM in both lines) -->
+            <dependency>
+                <groupId>org.apache.iceberg</groupId>
+                <artifactId>iceberg-aws-bundle</artifactId>
+                <version>${iceberg.aws.bundle.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <version>3.6.1</version>
+                </plugin>
+                <!-- Extracts the bundled Hadoop native libs and prepends
+                     -Djava.library.path / -Dhadoop.home.dir to the argLine. -->
+                <plugin>
+                    <groupId>org.openprojectx.hadoop.native.loader.core</groupId>
+                    <artifactId>maven-plugin</artifactId>
+                    <version>${hadoop-native-loader.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

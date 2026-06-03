@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "SparkEvent",
+  "namespace": "org.openprojectx.bigdata.test.example.spark",
+  "fields": [
+    {"name": "id", "type": "int"},
+    {"name": "name", "type": "string"}
+  ]
+}

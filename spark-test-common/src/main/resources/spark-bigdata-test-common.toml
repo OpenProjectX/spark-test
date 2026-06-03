@@ -1,0 +1,26 @@
+[images]
+kerberos = "openprojectx/kerby-kdc:latest"
+hdfs = "apache/hadoop:3.5.0"
+hiveMetastore = "ghcr.io/openprojectx/hive:3.1.3-hadoop-3.4.2-gcs-4.0.4-jdk17-0.1.4"
+hiveMetastorePostgres = "postgres:16-alpine"
+clouderaHms = "ghcr.io/openprojectx/cloudera-hms:0.1.16"
+kafka = "apache/kafka:4.1.2"
+schemaRegistry = "confluentinc/cp-schema-registry:7.8.0"
+kafkaUi = "ghcr.io/kafbat/kafka-ui:latest"
+localStackS3 = "localstack/localstack:4.14.0"
+fakeGcs = "fsouza/fake-gcs-server:1.54"
+
+[services]
+hdfs = true
+kafka = true
+schemaRegistry = true
+localStackS3 = true
+fakeGcs = true
+
+# Bind fake-gcs to a fixed host port so the java-dns agent can redirect the stable
+# URL http://fake-gcs:4443/ (host "fake-gcs" -> 127.0.0.1) to the running container.
+[ports]
+fakeGcs = 4443
+
+[containerLogs]
+mode = "FILE"
