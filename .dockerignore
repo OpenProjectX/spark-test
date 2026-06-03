@@ -1,0 +1,43 @@
+# Mirrors .gitignore so build artifacts and IDE/VCS files are NOT copied into the image.
+# The image rebuilds target/ and re-populates the Maven repo itself, then keeps them.
+.git
+.gitignore
+
+# Build output
+**/target/
+target/
+build/
+out/
+
+# IDE
+.idea/
+.idea_modules/
+*.iws
+*.iml
+.classpath
+.project
+atlassian-ide-plugin.xml
+
+# Maven / release scratch files
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+dependency-reduced-pom.xml
+pom.xml.next
+pom.xml.releaseBackup
+pom.xml.tag
+pom.xml.versionsBackup
+release.properties
+buildNumber.properties
+
+# CMake
+cmake-build-*/
+
+# Crashlytics / Fabric
+com_crashlytics_export_strings.xml
+crashlytics-build.properties
+crashlytics.properties
+fabric.properties
+
+# Docker scratch
+Dockerfile
+.dockerignore

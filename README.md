@@ -99,3 +99,29 @@ mvn -pl spark-cloudera test
 # or both
 mvn test
 ```
+
+## Docker image
+
+The [`Dockerfile`](Dockerfile) builds the whole project inside the image and **keeps everything**:
+all downloaded Maven dependencies (`/root/.m2/repository`), every built module jar
+(`**/target/*.jar`), the project source (`/workspace/spark-test`), and a source tarball
+(`/workspace/spark-test-src.tgz`, captured before the build so it is pure source with no
+`target/`). The source is copied except for the files excluded by [`.dockerignore`](.dockerignore),
+which mirrors `.gitignore` (so `target/`, `.idea/`, `.git`, etc. are not brought in). Tests are
+skipped during the image build because Testcontainers needs a Docker daemon that isn't available
+there.
+
+```bash
+docker build -t spark-test .
+
+# Behind an HTTP proxy (e.g. local dev), pass it through:
+docker build --build-arg HTTPS_PROXY=http://host.docker.internal:10809 -t spark-test .
+```
+
+## CI / GitHub Container Registry
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) builds that image (installing the deps
+and building the jars in the image build) and publishes it to **GitHub Container Registry**
+(`ghcr.io/<owner>/spark-test`) on pushes to the default branch and on `v*` tags. It needs no extra
+secrets — it authenticates with the built-in `GITHUB_TOKEN` (`packages: write`). Pull requests build
+the image but do not push.
