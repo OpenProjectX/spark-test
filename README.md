@@ -125,3 +125,10 @@ and building the jars in the image build) and publishes it to **GitHub Container
 (`ghcr.io/<owner>/spark-test`) on pushes to the default branch and on `v*` tags. It needs no extra
 secrets — it authenticates with the built-in `GITHUB_TOKEN` (`packages: write`). Pull requests build
 the image but do not push.
+
+[`.github/workflows/windows.yml`](.github/workflows/windows.yml) runs on `windows-latest` to check
+Windows compatibility: it builds every module with Maven and verifies the `hadoop-native-loader`
+plugin extracts the Windows-native Hadoop artifacts (`winutils.exe`, `hadoop.dll`). The full
+scenario test is not run there — it needs Testcontainers (Linux containers), which GitHub-hosted
+Windows runners can't run; run `mvn test` on Linux, or on a self-hosted Windows machine backed by a
+Linux-container Docker engine.

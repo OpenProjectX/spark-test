@@ -9,7 +9,8 @@
     <version>0.1.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>spark-test-parent</name>
-    <description>Maven Java port of the bigdata-test Spark JUnit 5 example, with Apache and Cloudera Spark modules.</description>
+    <description>Maven Java port of the bigdata-test Spark JUnit 5 example, with Apache and Cloudera Spark modules.
+    </description>
 
     <modules>
         <module>spark-test-common</module>
@@ -22,7 +23,7 @@
         <maven.compiler.release>17</maven.compiler.release>
 
         <!-- bigdata-test framework, published locally as 0.1.1-SNAPSHOT -->
-        <bigdata-test.version>0.1.1</bigdata-test.version>
+        <bigdata-test.version>0.1.2</bigdata-test.version>
 
         <!-- shared, version-line independent dependencies -->
         <junit.version>5.11.4</junit.version>
@@ -37,7 +38,9 @@
         <java-dns.version>0.1.1</java-dns.version>
 
         <!-- forked test JVM options mirrored from the Gradle example -->
-        <bigdata.test.argLine>--add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED -Xms2048m -Xmx8192m</bigdata.test.argLine>
+        <bigdata.test.argLine>--add-exports=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED
+            --add-opens=java.base/java.net=ALL-UNNAMED -Xms2048m -Xmx8192m
+        </bigdata.test.argLine>
     </properties>
 
     <repositories>
@@ -46,31 +49,43 @@
         <repository>
             <id>central</id>
             <url>https://repo1.maven.org/maven2</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
         <repository>
             <id>cloudera</id>
             <url>https://repository.cloudera.com/repository/cloudera-repos/</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
         <repository>
             <id>confluent</id>
             <url>https://packages.confluent.io/maven/</url>
-            <releases><enabled>true</enabled></releases>
-            <snapshots><enabled>false</enabled></snapshots>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
     <dependencyManagement>
         <dependencies>
-                <!-- Pin jackson-annotations to Apache Spark 3.5's Jackson line (2.15.2). Maven's
-                 nearest-wins would otherwise select Cloudera Spark's 2.12.7, whose
-                 JsonFormat.Feature lacks READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE that
-                 Testcontainers 2.0.4's shaded Jackson requires. Annotations are forward
-                 compatible, and jackson-databind/core are intentionally left at each Spark
-                 line's own version. -->
+            <!-- Pin jackson-annotations to Apache Spark 3.5's Jackson line (2.15.2). Maven's
+             nearest-wins would otherwise select Cloudera Spark's 2.12.7, whose
+             JsonFormat.Feature lacks READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE that
+             Testcontainers 2.0.4's shaded Jackson requires. Annotations are forward
+             compatible, and jackson-databind/core are intentionally left at each Spark
+             line's own version. -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
