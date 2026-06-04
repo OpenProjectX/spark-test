@@ -126,8 +126,8 @@ artifacts** the project uses — the bigdata-test framework and its transitive o
 (`junit5`, `extensions`, `core`, `hive-docker-testcontainers`), the `java-dns` agent, and the
 `hadoop-native-loader` Maven plugin (+ its native-libs `core`). It does **not** download Spark,
 Hadoop, or any other third-party jars: the set is discovered from the dependency graph and each
-artifact is fetched with `-Dtransitive=false`. The list is dynamic, so version bumps (e.g.
-`bigdata-test.version`) are picked up automatically.
+artifact is fetched with `-Dtransitive=false` (each main jar plus its `-sources` jar). The list is
+dynamic, so version bumps (e.g. `bigdata-test.version`) are picked up automatically.
 
 ```bash
 docker build -f Dockerfile.slim -t spark-test-openprojectx .

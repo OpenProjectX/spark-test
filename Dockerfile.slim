@@ -18,10 +18,12 @@ WORKDIR /workspace/spark-test
 # The poms are what's needed to resolve the dependency graph (.dockerignore filters ignored files).
 COPY . .
 
+# Step 1 collects every org.openprojectx.* dependency in the graph (direct + transitive
+# openprojectx), excluding this project's own modules, and downloads each jar + its -sources jar
+# (no transitives, so no Spark). Step 2 adds the org.openprojectx.* Maven plugin and its
+# native-libs core (+ their -sources jars). -sources fetches are best-effort.
 RUN set -eux; \
     REPOS="central::default::https://repo1.maven.org/maven2,cloudera::default::https://repository.cloudera.com/repository/cloudera-repos/,confluent::default::https://packages.confluent.io/maven/"; \
-    # 1) Every org.openprojectx.* DEPENDENCY in the graph (direct + transitive openprojectx),
-    #    excluding this project's own modules. Jars only -- no transitives, so no Spark.
     mvn -B dependency:tree -Dincludes='org.openprojectx*' \
       | grep -oE 'org\.openprojectx[^: ]*:[^: ]+:jar:[0-9][^: ]*' \
       | grep -v '^org\.openprojectx\.bigdata\.test\.example:' \
@@ -29,11 +31,13 @@ RUN set -eux; \
     cat /tmp/op-gavs.txt; \
     while IFS=: read -r g a t v; do \
       mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:$t"; \
+      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true; \
     done < /tmp/op-gavs.txt; \
-    # 2) The org.openprojectx.* Maven PLUGIN (and its native-libs core), version read from the pom.
     HNL="$(mvn -B -q help:evaluate -Dexpression=hadoop-native-loader.version -DforceStdout)"; \
-    mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="org.openprojectx.hadoop.native.loader.core:maven-plugin:$HNL"; \
-    mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="org.openprojectx.hadoop.native.loader.core:core:$HNL"; \
+    for art in "org.openprojectx.hadoop.native.loader.core:maven-plugin:$HNL" "org.openprojectx.hadoop.native.loader.core:core:$HNL"; do \
+      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$art"; \
+      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$art:jar:sources" || true; \
+    done; \
     echo "=== org.openprojectx artifacts in local repo ==="; \
     find /root/.m2/repository/org/openprojectx -name '*.jar' | sort
 
