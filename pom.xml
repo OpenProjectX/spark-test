@@ -13,6 +13,7 @@
     </description>
 
     <modules>
+        <module>spark-test-bom</module>
         <module>spark-test-common</module>
         <module>spark-apache</module>
         <module>spark-cloudera</module>
@@ -92,24 +93,10 @@
                 <version>2.15.2</version>
             </dependency>
 
-            <!-- bigdata-test framework (local 0.1.1-SNAPSHOT) -->
-            <dependency>
-                <groupId>org.openprojectx.bigdata.test.core</groupId>
-                <artifactId>junit5</artifactId>
-                <version>${bigdata-test.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.openprojectx.bigdata.test.core</groupId>
-                <artifactId>extensions</artifactId>
-                <version>${bigdata-test.version}</version>
-            </dependency>
-
-            <!-- java-dns agent jar, attached to the Surefire JVM to redirect GCS DNS -->
-            <dependency>
-                <groupId>org.openprojectx.java.dns</groupId>
-                <artifactId>core</artifactId>
-                <version>${java-dns.version}</version>
-            </dependency>
+            <!-- The org.openprojectx.* dependencies (bigdata-test framework + java-dns agent) are
+                 managed by the spark-test-bom module; the consuming modules import that BOM.
+                 (The parent cannot import it here: the BOM inherits this parent, so a self-import
+                 cycle would result.) -->
 
             <!-- JUnit 5 -->
             <dependency>

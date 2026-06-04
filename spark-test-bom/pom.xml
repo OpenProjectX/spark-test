@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.openprojectx.bigdata.test.example</groupId>
+        <artifactId>spark-test-parent</artifactId>
+        <version>0.1.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>spark-test-bom</artifactId>
+    <packaging>pom</packaging>
+    <name>spark-test-bom</name>
+    <description>
+        BOM that manages the org.openprojectx.* dependencies used by this project (the bigdata-test
+        framework and the java-dns agent). Modules import this BOM so the openprojectx versions are
+        declared in exactly one place. Versions come from the parent's bigdata-test.version /
+        java-dns.version properties.
+    </description>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- bigdata-test framework -->
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>junit5</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>extensions</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
+            <!-- java-dns agent jar, attached to the Surefire JVM to redirect GCS DNS -->
+            <dependency>
+                <groupId>org.openprojectx.java.dns</groupId>
+                <artifactId>core</artifactId>
+                <version>${java-dns.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

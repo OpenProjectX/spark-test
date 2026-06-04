@@ -23,6 +23,19 @@
         <log4j.slf4j.version>2.20.0</log4j.slf4j.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Manages the org.openprojectx.* dependency versions. -->
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.example</groupId>
+                <artifactId>spark-test-bom</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- shared scenario + test class + resources -->
         <dependency>

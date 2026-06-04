@@ -25,6 +25,7 @@ the default test in the original Gradle example.
 
 | Module               | Purpose                                                                                   |
 |----------------------|-------------------------------------------------------------------------------------------|
+| `spark-test-bom`     | BOM that manages the `org.openprojectx.*` dependency versions (bigdata-test + java-dns) in one place; the other modules import it. |
 | `spark-test-common`  | The shared scenario, the `SparkBigDataTestExample` test class, and the test resources (TOML/Avro/log4j2). Holds the test code exactly once. |
 | `spark-apache`       | Runs the shared test against the **Apache** line (Spark 3.5.7 / Hadoop 3.4.2 / Iceberg 1.11.0). |
 | `spark-cloudera`     | Runs the shared test against the **Cloudera** line (Spark 3.3.2.3.3.7190.9-1 / Hadoop 3.1.1.7.1.9.14-2 / Iceberg 1.8.1). |
@@ -118,13 +119,28 @@ docker build -t spark-test .
 docker build --build-arg HTTPS_PROXY=http://host.docker.internal:10809 -t spark-test .
 ```
 
+### Slim image ([`Dockerfile.slim`](Dockerfile.slim))
+
+A lightweight image that pre-populates the Maven local repo with **only the `org.openprojectx.*`
+artifacts** the project uses — the bigdata-test framework and its transitive openprojectx modules
+(`junit5`, `extensions`, `core`, `hive-docker-testcontainers`), the `java-dns` agent, and the
+`hadoop-native-loader` Maven plugin (+ its native-libs `core`). It does **not** download Spark,
+Hadoop, or any other third-party jars: the set is discovered from the dependency graph and each
+artifact is fetched with `-Dtransitive=false`. The list is dynamic, so version bumps (e.g.
+`bigdata-test.version`) are picked up automatically.
+
+```bash
+docker build -f Dockerfile.slim -t spark-test-openprojectx .
+```
+
 ## CI / GitHub Container Registry
 
 [`.github/workflows/build.yml`](.github/workflows/build.yml) builds that image (installing the deps
 and building the jars in the image build) and publishes it to **GitHub Container Registry**
-(`ghcr.io/<owner>/spark-test`) on pushes to the default branch and on `v*` tags. It needs no extra
-secrets — it authenticates with the built-in `GITHUB_TOKEN` (`packages: write`). Pull requests build
-the image but do not push.
+(`ghcr.io/<owner>/spark-test`) on pushes to the default branch and on `v*` tags. It also builds and
+pushes the [slim image](#slim-image-dockerfileslim) to the same repo with `-slim`-suffixed tags
+(`latest-slim`, `<short-sha>-slim`, …). It needs no extra secrets — it authenticates with the
+built-in `GITHUB_TOKEN` (`packages: write`). Pull requests build both images but do not push.
 
 [`.github/workflows/windows.yml`](.github/workflows/windows.yml) runs on `windows-latest` to check
 Windows compatibility: it builds every module with Maven and verifies the `hadoop-native-loader`
