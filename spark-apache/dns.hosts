@@ -1,0 +1,5 @@
+# java-dns host overrides (hosts-file format: <ip> <hostname>).
+# Resolves the bigdata-test container network aliases to the local mapped containers,
+# so the test reaches them without wiring per-run endpoints into the Spark session.
+127.0.0.1 fake-gcs
+127.0.0.1 hdfs

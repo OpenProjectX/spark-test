@@ -21,6 +21,7 @@ fakeGcs = true
 # URL http://fake-gcs:4443/ (host "fake-gcs" -> 127.0.0.1) to the running container.
 [ports]
 fakeGcs = 4443
+hdfsDataNode = 9866
 
 [containerLogs]
 mode = "FILE"

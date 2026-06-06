@@ -50,11 +50,13 @@ GRADLE_USER_HOME=/data/.gradle ./gradlew :example:spark:dependencies \
   bundled Hadoop native libraries and prepends `-Djava.library.path` / `-Dhadoop.home.dir` to the
   Surefire `argLine`, so the native Hadoop code is used instead of the pure-Java fallback.
 - **[java-dns](../java-dns) `0.1.1`** — the agent jar (`org.openprojectx.java.dns:core`) is attached
-  to the Surefire JVM via `-javaagent:…=hosts=fake-gcs/127.0.0.1`. This redirects the `fake-gcs`
-  host to the local container, so the GCS connector can use the stable URL
-  `http://fake-gcs:4443/` and the test **no longer needs to read the dynamic GCS endpoint**. The
-  fake-gcs container is bound to the fixed host port `4443` via `[ports] fakeGcs = 4443` in
-  `spark-bigdata-test-common.toml` so the redirected host:port lines up.
+  to the Surefire JVM via `-javaagent:…=hostsFile=${project.basedir}/dns.hosts`. The
+  [`dns.hosts`](spark-apache/dns.hosts) file maps the bigdata-test container network aliases
+  (`fake-gcs`, `hdfs`) to `127.0.0.1`, so the clients reach the local mapped containers without
+  wiring per-run endpoints into the Spark session. In particular the GCS connector can use the
+  stable URL `http://fake-gcs:4443/` and the test **no longer needs to read the dynamic GCS
+  endpoint**. The fake-gcs container is bound to the fixed host port `4443` via
+  `[ports] fakeGcs = 4443` in `spark-bigdata-test-common.toml` so the redirected host:port lines up.
 
 ## Prerequisites
 

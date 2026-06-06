@@ -161,7 +161,8 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- java-dns agent jar (attached to the Surefire JVM to redirect the fake-gcs host) -->
+        <!-- java-dns agent jar (attached to the Surefire JVM; redirects the hosts in dns.hosts
+             (fake-gcs, hdfs) to the local mapped containers) -->
         <dependency>
             <groupId>org.openprojectx.java.dns</groupId>
             <artifactId>core</artifactId>
@@ -204,7 +205,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>@{argLine} -javaagent:${org.openprojectx.java.dns:core:jar}=hosts=fake-gcs/127.0.0.1;fallback=true ${bigdata.test.argLine}</argLine>
+                    <argLine>@{argLine} -javaagent:${org.openprojectx.java.dns:core:jar}=hostsFile=${project.basedir}/dns.hosts;fallback=true ${bigdata.test.argLine}</argLine>
                     <dependenciesToScan>
                         <dependency>org.openprojectx.bigdata.test.example:spark-test-common</dependency>
                     </dependenciesToScan>
