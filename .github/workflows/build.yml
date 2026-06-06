@@ -1,13 +1,19 @@
 name: build
 
-# Builds the project inside the Docker image (downloading all Maven dependencies and
-# producing the module jars), then publishes the image to GitHub Container Registry.
+# Publishes images to GitHub Container Registry. By default only the slim image
+# (org.openprojectx.* Maven artifacts) is built. The full image (full Maven build with all
+# deps + jars) is opt-in: trigger the workflow manually with "build_full" enabled.
 on:
   push:
     branches: [ main, master ]
     tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_full:
+        description: 'Also build and push the full (heavy) image'
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -40,8 +46,10 @@ jobs:
         id: vars
         run: echo "short_sha=${GITHUB_SHA:0:8}" >> "$GITHUB_OUTPUT"
 
+      # Full image: opt-in only (manual run with build_full=true). Disabled by default.
       - name: Docker metadata
         id: meta
+        if: ${{ inputs.build_full }}
         uses: docker/metadata-action@v5
         with:
           # metadata-action lowercases the image name, so mixed-case owners are fine.
@@ -56,6 +64,7 @@ jobs:
       # The Dockerfile runs `mvn install` (install the deps and build in the image build),
       # keeping the downloaded deps, built jars and source inside the published image.
       - name: Build and push image
+        if: ${{ inputs.build_full }}
         uses: docker/build-push-action@v6
         with:
           context: .

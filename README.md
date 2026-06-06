@@ -146,12 +146,13 @@ docker build -f Dockerfile.slim -t spark-test-openprojectx .
 
 ## CI / GitHub Container Registry
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) builds that image (installing the deps
-and building the jars in the image build) and publishes it to **GitHub Container Registry**
-(`ghcr.io/<owner>/spark-test`) on pushes to the default branch and on `v*` tags. It also builds and
-pushes the [slim image](#slim-image-dockerfileslim) to the same repo with `-slim`-suffixed tags
-(`latest-slim`, `<short-sha>-slim`, …). It needs no extra secrets — it authenticates with the
-built-in `GITHUB_TOKEN` (`packages: write`). Pull requests build both images but do not push.
+[`.github/workflows/build.yml`](.github/workflows/build.yml) publishes to **GitHub Container
+Registry** (`ghcr.io/<owner>/spark-test`). By **default it builds and pushes only the
+[slim image](#slim-image-dockerfileslim)** (`-slim`-suffixed tags: `latest-slim`, `<short-sha>-slim`,
+…). The full image (the heavy full Maven build) is **opt-in and disabled by default** — trigger the
+workflow manually (`workflow_dispatch`) with the **`build_full`** input enabled to also build and
+push it. It needs no extra secrets — it authenticates with the built-in `GITHUB_TOKEN`
+(`packages: write`). Pull requests build the image(s) but do not push.
 
 [`.github/workflows/windows.yml`](.github/workflows/windows.yml) runs on `windows-latest` to check
 Windows compatibility: it builds every module with Maven and verifies the `hadoop-native-loader`
