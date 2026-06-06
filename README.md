@@ -91,12 +91,21 @@ Both modules pass the full scenario (`Tests run: 1, Failures: 0, Errors: 0`) aga
 
 ## Build & run
 
+Maven modules depend on built artifacts, not directly on sibling source or resource directories. If
+you run a single runtime module without `-am`, Maven resolves `spark-test-common` from
+`~/.m2/repository`, so stale TOML/resources can be used until `spark-test-common` is installed
+again. Prefer `-am` for focused module runs; it adds required reactor modules and uses the freshly
+built `spark-test-common` artifact.
+
 ```bash
 # compile everything and install spark-test-common into the local repo
 mvn install -DskipTests
 
-# run the full scenario on each line (requires Docker)
-mvn -pl spark-apache test
+# run the full scenario on one line and also build required reactor modules
+mvn -pl spark-apache -am test
+mvn -pl spark-cloudera -am test
+
+# only use this after mvn install has refreshed local SNAPSHOT artifacts
 mvn -pl spark-cloudera test
 
 # or both
