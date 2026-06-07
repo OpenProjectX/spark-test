@@ -33,6 +33,19 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Force the Hadoop shaded clients to the Apache line's 3.4.2 (the Gradle config
+                 does the same via resolutionStrategy). Spark 3.5.7 pulls 3.3.4, which lacks
+                 org.apache.hadoop.fs.BulkDelete that hadoop-aws 3.4.2 references. -->
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client-api</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-client-runtime</artifactId>
+                <version>${hadoop.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -118,6 +131,18 @@
         <dependency>
             <groupId>com.google.cloud.bigdataoss</groupId>
             <artifactId>util-hadoop</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Confluent Avro serializer + schema registry client for the bigdata-test Kafka Avro seeder -->
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
             <scope>test</scope>
         </dependency>
 

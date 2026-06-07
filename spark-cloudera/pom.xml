@@ -136,6 +136,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Confluent Avro serializer + schema registry client for the bigdata-test Kafka Avro seeder -->
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- logging -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>

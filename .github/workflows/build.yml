@@ -18,6 +18,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Print the full, uncollapsed output of every build instruction (no TUI grouping).
+  BUILDKIT_PROGRESS: plain
 
 jobs:
   build:

@@ -24,7 +24,7 @@
         <maven.compiler.release>17</maven.compiler.release>
 
         <!-- bigdata-test framework, published locally as 0.1.1-SNAPSHOT -->
-        <bigdata-test.version>0.1.6</bigdata-test.version>
+        <bigdata-test.version>0.1.9</bigdata-test.version>
 
         <!-- shared, version-line independent dependencies -->
         <junit.version>5.11.4</junit.version>
@@ -91,6 +91,54 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
                 <version>2.15.2</version>
+            </dependency>
+
+            <!-- Pin commons-compress to the version Testcontainers 2.0.4 needs. Maven's
+                 nearest-wins would otherwise select Spark/Hadoop's 1.23.0, which lacks the
+                 TarArchiveOutputStream.putArchiveEntry(TarArchiveEntry) overload added in 1.26.
+                 Testcontainers' MountableFile copy then fails with a (swallowed) NoSuchMethodError
+                 on a background thread, so withCopyFileToContainer silently delivers nothing, e.g.
+                 the Kafka TLS keystore never lands in the container ("keystore does not exist"). -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.28.0</version>
+            </dependency>
+            <!-- commons-compress 1.28.0 also calls commons-lang3 3.15+ (ArrayFill) and
+                 commons-io 2.12+ (FileTimes) APIs; Spark/Hadoop pin older ones that Maven's
+                 nearest-wins would otherwise keep, breaking Testcontainers' archive copy. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.18.0</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>2.18.0</version>
+            </dependency>
+
+            <!-- The Confluent serializer needs a full Avro; Cloudera Spark ships a stripped
+                 avro 1.11.1.7.x (no Conversions.BigDecimalConversion) that Maven's nearest-wins
+                 would keep. Gradle resolves to 1.12.1; pin it here for both lines. -->
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>1.12.1</version>
+            </dependency>
+
+            <!-- Confluent Avro serializer + schema registry client, used by the bigdata-test
+                 Kafka Avro seeder (KafkaAvroProducers). The Gradle example adds these as
+                 testImplementation; they are not pulled transitively by the extensions module. -->
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-avro-serializer</artifactId>
+                <version>${confluent.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-schema-registry-client</artifactId>
+                <version>${confluent.version}</version>
             </dependency>
 
             <!-- The org.openprojectx.* dependencies (bigdata-test framework + java-dns agent) are

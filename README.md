@@ -86,8 +86,26 @@ A few places therefore need an explicit pin/exclusion in Maven that Gradle handl
   Those are Apache Hadoop 3.4.2 shaded clients whose `core-default.xml` uses duration strings
   (`fs.s3a.threads.keepalivetime=60s`) that Cloudera's Hadoop 3.1.1 S3A code parses as a plain
   number. Excluding them leaves Cloudera Spark's own Hadoop 3.1.1 as the single Hadoop on the line.
+- **`commons-compress` → 1.28.0 (with `commons-lang3` → 3.18.0, `commons-io` → 2.18.0).**
+  Testcontainers 2.0.4 was built against commons-compress 1.26+; Spark/Hadoop pin 1.23.0, which
+  lacks `TarArchiveOutputStream.putArchiveEntry(TarArchiveEntry)`. Testcontainers'
+  `MountableFile`/`Transferable` copy then throws a **swallowed** `NoSuchMethodError` on a
+  background thread, so `withCopyFileToContainer` silently delivers nothing — e.g. the Kafka TLS
+  keystore never reaches the container and it exits with *"kafka.keystore.p12 file does not
+  exist"*. 1.28.0 in turn calls newer `commons-lang3` (`ArrayFill`) and `commons-io` (`FileTimes`)
+  APIs, so those are bumped too.
+- **`avro` → 1.12.1.** Cloudera Spark ships a stripped `avro 1.11.1.7.x` missing
+  `Conversions.BigDecimalConversion`, which the Confluent Avro serializer needs. Gradle resolves to
+  1.12.1; Maven's nearest-wins keeps the Cloudera build.
+- **`spark-apache`: force `hadoop-client-api`/`hadoop-client-runtime` → 3.4.2.** Spark 3.5.7 pulls
+  Hadoop `3.3.4` (no `org.apache.hadoop.fs.BulkDelete`), but `hadoop-aws 3.4.2` references it. The
+  Gradle config aligns all Hadoop to 3.4.2 via `resolutionStrategy`; this pin does the same.
+- **Added `io.confluent:kafka-avro-serializer` + `kafka-schema-registry-client` (test).** The
+  bigdata-test Kafka Avro seeder needs them; the Gradle example adds them as `testImplementation`
+  and they are not pulled transitively by `extensions`.
 
-Both modules pass the full scenario (`Tests run: 1, Failures: 0, Errors: 0`) against a local Docker.
+Both modules pass the full scenario (`Tests run: 1, Failures: 0, Errors: 0`) against a local Docker
+with `bigdata-test` 0.1.9-SNAPSHOT.
 
 ## Build & run
 
@@ -128,17 +146,26 @@ docker build -t spark-test .
 
 # Behind an HTTP proxy (e.g. local dev), pass it through:
 docker build --build-arg HTTPS_PROXY=http://host.docker.internal:10809 -t spark-test .
+
+# See the full output of every instruction (uncollapsed); add --no-cache to force re-execution:
+docker build --progress=plain -t spark-test .
 ```
+
+> The CI workflow sets `BUILDKIT_PROGRESS=plain`, so its image builds already print the full
+> per-instruction output in the Actions log.
 
 ### Slim image ([`Dockerfile.slim`](Dockerfile.slim))
 
 A lightweight image that pre-populates the Maven local repo with **only the `org.openprojectx.*`
 artifacts** the project uses — the bigdata-test framework and its transitive openprojectx modules
 (`junit5`, `extensions`, `core`, `hive-docker-testcontainers`), the `java-dns` agent, and the
-`hadoop-native-loader` Maven plugin (+ its native-libs `core`). It does **not** download Spark,
-Hadoop, or any other third-party jars: the set is discovered from the dependency graph and each
-artifact is fetched with `-Dtransitive=false` (each main jar plus its `-sources` jar). The list is
-dynamic, so version bumps (e.g. `bigdata-test.version`) are picked up automatically.
+`hadoop-native-loader` Maven plugin (+ its native-libs `core`), each with its `-sources` jar. It does
+**not** download Spark, Hadoop, or any other third-party jars. Rather than resolving the full project
+graph (which would walk the huge, slow Spark/Hadoop/Cloudera tree), it does a small breadth-first
+walk over the **openprojectx POMs only** — fetching each with `-Dtransitive=false` and following the
+openprojectx dependencies it finds — which is both faster and keeps the image to openprojectx jars.
+Versions are read from the project pom, so bumps (e.g. `bigdata-test.version`) are picked up
+automatically.
 
 ```bash
 docker build -f Dockerfile.slim -t spark-test-openprojectx .

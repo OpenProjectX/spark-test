@@ -1,10 +1,12 @@
+# syntax=docker/dockerfile:1
 # Slim image: populate the Maven local repository with ONLY the org.openprojectx.* artifacts this
 # project uses (the bigdata-test framework + its transitive openprojectx modules, the java-dns
-# agent, and the hadoop-native-loader Maven plugin). No Spark/Hadoop/third-party jars are
-# downloaded -- every artifact is fetched with -Dtransitive=false, so this stays small.
+# agent, and the hadoop-native-loader Maven plugin), each with its -sources jar.
 #
-# The set is discovered dynamically from the project's dependency graph, so it tracks version
-# changes automatically (e.g. bumping bigdata-test.version) instead of a hard-coded list.
+# It does a small breadth-first walk over the openprojectx POMs only (each fetched with
+# dependency:get -Dtransitive=false), so it never resolves the huge/slow Spark/Hadoop/Cloudera
+# graph -- only the openprojectx closure is downloaded. Versions are read from the project pom, so
+# version bumps (e.g. bigdata-test.version) are picked up automatically.
 FROM maven:3.9-eclipse-temurin-17
 
 ARG HTTP_PROXY=""
@@ -15,30 +17,49 @@ ENV HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} NO_PROXY=${NO_PROXY} \
 
 WORKDIR /workspace/spark-test
 
-# The poms are what's needed to resolve the dependency graph (.dockerignore filters ignored files).
-COPY . .
+# Only the project pom is needed -- it holds the org.openprojectx.* versions.
+COPY pom.xml ./pom.xml
 
-# Step 1 collects every org.openprojectx.* dependency in the graph (direct + transitive
-# openprojectx), excluding this project's own modules, and downloads each jar + its -sources jar
-# (no transitives, so no Spark). Step 2 adds the org.openprojectx.* Maven plugin and its
-# native-libs core (+ their -sources jars). -sources fetches are best-effort.
-RUN set -eux; \
-    REPOS="central::default::https://repo1.maven.org/maven2,cloudera::default::https://repository.cloudera.com/repository/cloudera-repos/,confluent::default::https://packages.confluent.io/maven/"; \
-    mvn -B dependency:tree -Dincludes='org.openprojectx*' \
-      | grep -oE 'org\.openprojectx[^: ]*:[^: ]+:jar:[0-9][^: ]*' \
-      | grep -v '^org\.openprojectx\.bigdata\.test\.example:' \
-      | sort -u > /tmp/op-gavs.txt; \
-    cat /tmp/op-gavs.txt; \
-    while IFS=: read -r g a t v; do \
-      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:$t"; \
-      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true; \
-    done < /tmp/op-gavs.txt; \
-    HNL="$(mvn -B -q help:evaluate -Dexpression=hadoop-native-loader.version -DforceStdout)"; \
-    for art in "org.openprojectx.hadoop.native.loader.core:maven-plugin:$HNL" "org.openprojectx.hadoop.native.loader.core:core:$HNL"; do \
-      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$art"; \
-      mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$art:jar:sources" || true; \
-    done; \
-    echo "=== org.openprojectx artifacts in local repo ==="; \
-    find /root/.m2/repository/org/openprojectx -name '*.jar' | sort
+RUN <<'SCRIPT'
+set -eux
+REPOS="central::default::https://repo1.maven.org/maven2,cloudera::default::https://repository.cloudera.com/repository/cloudera-repos/,confluent::default::https://packages.confluent.io/maven/"
+BDT="$(grep -oE '<bigdata-test.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
+JDNS="$(grep -oE '<java-dns.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
+HNL="$(grep -oE '<hadoop-native-loader.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
+
+# Extracts org.openprojectx.* dependencies (with literal versions) from a POM.
+cat > /tmp/op-deps.awk <<'AWK'
+/<dependency>/       { g=ar=v=""; ind=1; next }
+/<\/dependency>/     { if (ind && g ~ /^org\.openprojectx/ && v ~ /^[0-9]/) print g":"ar":"v; ind=0; next }
+ind && /<groupId>/   { t=$0; gsub(/.*<groupId>|<\/groupId>.*/,"",t); g=t }
+ind && /<artifactId>/{ t=$0; gsub(/.*<artifactId>|<\/artifactId>.*/,"",t); ar=t }
+ind && /<version>/   { t=$0; gsub(/.*<version>|<\/version>.*/,"",t); v=t }
+AWK
+
+# Seed the queue with the openprojectx entry points (deps + the Maven plugin and its core).
+printf '%s\n' \
+  "org.openprojectx.bigdata.test.core:junit5:$BDT" \
+  "org.openprojectx.bigdata.test.core:extensions:$BDT" \
+  "org.openprojectx.java.dns:core:$JDNS" \
+  "org.openprojectx.hadoop.native.loader.core:maven-plugin:$HNL" \
+  "org.openprojectx.hadoop.native.loader.core:core:$HNL" > /tmp/queue.txt
+: > /tmp/done.txt
+
+# Breadth-first over the openprojectx closure: fetch each jar + -sources, then enqueue the
+# openprojectx dependencies found in its POM.
+while [ -s /tmp/queue.txt ]; do
+  gav="$(head -1 /tmp/queue.txt)"; sed -i 1d /tmp/queue.txt
+  grep -qxF "$gav" /tmp/done.txt && continue
+  echo "$gav" >> /tmp/done.txt
+  g="${gav%%:*}"; rest="${gav#*:}"; a="${rest%%:*}"; v="${rest##*:}"
+  mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v"
+  mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true
+  pom="/root/.m2/repository/$(echo "$g" | tr . /)/$a/$v/$a-$v.pom"
+  [ -f "$pom" ] && awk -f /tmp/op-deps.awk "$pom" >> /tmp/queue.txt || true
+done
+
+echo "=== org.openprojectx artifacts in local repo ==="
+find /root/.m2/repository/org/openprojectx -name '*.jar' | sort
+SCRIPT
 
 CMD ["bash"]
