@@ -34,6 +34,30 @@
                 <version>${bigdata-test.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>org.openprojectx.bigdata-test.gradle.plugin</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>gradle-plugin</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>bigdata-test-spring-boot-autoconfigure</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>bigdata-test-spring-boot-starter</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
+
             <!-- java-dns agent jar, attached to the Surefire JVM to redirect GCS DNS -->
             <dependency>
                 <groupId>org.openprojectx.java.dns</groupId>

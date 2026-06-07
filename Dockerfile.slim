@@ -3,10 +3,15 @@
 # project uses (the bigdata-test framework + its transitive openprojectx modules, the java-dns
 # agent, and the hadoop-native-loader Maven plugin), each with its -sources jar.
 #
+# CONFIG-DRIVEN: the artifact list is NOT hardcoded here. It is discovered by scanning every project
+# POM (parent + all modules) for org.openprojectx.* <dependency>/<plugin> entries, with their
+# ${...} version placeholders resolved from the parent <properties>. So adding an openprojectx
+# dependency to any module pom (e.g. spark-test-bom/pom.xml) or bumping a *.version property flows
+# into this image automatically -- no edits to this Dockerfile needed.
+#
 # It does a small breadth-first walk over the openprojectx POMs only (each fetched with
 # dependency:get -Dtransitive=false), so it never resolves the huge/slow Spark/Hadoop/Cloudera
-# graph -- only the openprojectx closure is downloaded. Versions are read from the project pom, so
-# version bumps (e.g. bigdata-test.version) are picked up automatically.
+# graph -- only the openprojectx closure is downloaded.
 FROM maven:3.9-eclipse-temurin-17
 
 ARG HTTP_PROXY=""
@@ -17,52 +22,85 @@ ENV HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} NO_PROXY=${NO_PROXY} \
 
 WORKDIR /workspace/spark-test
 
-# Only the project pom is needed -- it holds the org.openprojectx.* versions. Copy it OUTSIDE the
-# working directory so Maven does not auto-discover it as a (broken) reactor: its <modules> point at
-# child dirs that are not in this build context, which would make every dependency:get fail.
-COPY pom.xml /tmp/project-pom.xml
+# Copy the project POMs (parent + every module pom) OUTSIDE the working directory, so Maven never
+# auto-discovers them as a (broken) reactor -- the modules' sources are not in this build context,
+# which would make every dependency:get fail. --parents preserves each pom's path, and the ./*/pom.xml
+# glob picks up any module automatically, so new modules need no change here either.
+COPY --parents ./pom.xml ./*/pom.xml /tmp/poms/
 
 RUN <<'SCRIPT'
 set -eux
 REPOS="central::default::https://repo1.maven.org/maven2,cloudera::default::https://repository.cloudera.com/repository/cloudera-repos/,confluent::default::https://packages.confluent.io/maven/"
-POM=/tmp/project-pom.xml
-BDT="$(grep -oE '<bigdata-test.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
-JDNS="$(grep -oE '<java-dns.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
-HNL="$(grep -oE '<hadoop-native-loader.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
+POMS=/tmp/poms
+PARENT="$POMS/pom.xml"
 
-# Extracts org.openprojectx.* dependencies (with literal versions) from a POM.
+# Build a sed script that resolves ${prop} version placeholders from the parent <properties>
+# (e.g. ${bigdata-test.version} -> 0.1.9). Only single-line <key>value</key> properties are taken.
+awk '
+  /<properties>/   { p=1; next }
+  /<\/properties>/ { p=0 }
+  p && match($0, /<[A-Za-z0-9._-]+>[^<]+<\//) {
+    line=$0; sub(/^[ \t]*</,"",line)
+    key=line; sub(/>.*/,"",key)
+    val=line; sub(/^[^>]*>/,"",val); sub(/<.*/,"",val)
+    gsub(/[&|\\]/,"\\\\&",val)
+    print "s|\\${" key "}|" val "|g"
+  }
+' "$PARENT" > /tmp/props.sed
+
+# Extracts org.openprojectx.* coordinates from <dependency> and <plugin> blocks of a POM, skipping
+# this project's own reactor modules (groupId org.openprojectx.bigdata.test.example), which are
+# built locally rather than fetched. Versions may still contain ${...}; they are resolved downstream.
 cat > /tmp/op-deps.awk <<'AWK'
-/<dependency>/       { g=ar=v=""; ind=1; next }
-/<\/dependency>/     { if (ind && g ~ /^org\.openprojectx/ && v ~ /^[0-9]/) print g":"ar":"v; ind=0; next }
-ind && /<groupId>/   { t=$0; gsub(/.*<groupId>|<\/groupId>.*/,"",t); g=t }
-ind && /<artifactId>/{ t=$0; gsub(/.*<artifactId>|<\/artifactId>.*/,"",t); ar=t }
-ind && /<version>/   { t=$0; gsub(/.*<version>|<\/version>.*/,"",t); v=t }
+function flush() {
+  if (depth && g ~ /^org\.openprojectx/ && g !~ /\.example$/ && a != "" && v != "")
+    print g ":" a ":" v
+  depth=0; g=a=v=""
+}
+/<dependency>|<plugin>/     { g=a=v=""; depth=1; next }
+/<\/dependency>|<\/plugin>/ { flush(); next }
+depth && /<groupId>/    { t=$0; gsub(/.*<groupId>|<\/groupId>.*/,"",t);    g=t }
+depth && /<artifactId>/ { t=$0; gsub(/.*<artifactId>|<\/artifactId>.*/,"",t); a=t }
+depth && /<version>/    { t=$0; gsub(/.*<version>|<\/version>.*/,"",t);    v=t }
 AWK
 
-# Seed the queue with the openprojectx entry points (deps + the Maven plugin and its core).
-printf '%s\n' \
-  "org.openprojectx.bigdata.test.core:junit5:$BDT" \
-  "org.openprojectx.bigdata.test.core:extensions:$BDT" \
-  "org.openprojectx.java.dns:core:$JDNS" \
-  "org.openprojectx.hadoop.native.loader.core:maven-plugin:$HNL" \
-  "org.openprojectx.hadoop.native.loader.core:core:$HNL" > /tmp/queue.txt
-: > /tmp/done.txt
+# resolve = extract openprojectx coords from the given POM(s), resolve ${...} versions, and keep
+# only concrete (numeric) versions -- drops managed refs that carry no version of their own.
+resolve() { awk -f /tmp/op-deps.awk "$@" | sed -f /tmp/props.sed | awk -F: '$3 ~ /^[0-9]/'; }
 
-# Breadth-first over the openprojectx closure: fetch each jar + -sources, then enqueue the
-# openprojectx dependencies found in its POM.
+# Seed the queue from every project POM -- this is the config-driven entry point.
+resolve $(find "$POMS" -name pom.xml | sort) | sort -u > /tmp/queue.txt
+: > /tmp/done.txt
+: > /tmp/failed.txt
+
+# Breadth-first over the openprojectx closure: fetch each jar (+ -sources), then enqueue the
+# openprojectx dependencies found in its own POM. The Spark/Hadoop/Cloudera graph is never walked.
+# Fetches are tolerant: the BOM legitimately lists gradle-only / unreleased openprojectx artifacts
+# that have no resolvable jar for this version line; those are recorded in failed.txt and skipped
+# rather than failing the build.
 while [ -s /tmp/queue.txt ]; do
   gav="$(head -1 /tmp/queue.txt)"; sed -i 1d /tmp/queue.txt
   grep -qxF "$gav" /tmp/done.txt && continue
   echo "$gav" >> /tmp/done.txt
   g="${gav%%:*}"; rest="${gav#*:}"; a="${rest%%:*}"; v="${rest##*:}"
-  mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v"
-  mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true
-  pom="/root/.m2/repository/$(echo "$g" | tr . /)/$a/$v/$a-$v.pom"
-  [ -f "$pom" ] && awk -f /tmp/op-deps.awk "$pom" >> /tmp/queue.txt || true
+  if mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v"; then
+    mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true
+    pom="/root/.m2/repository/$(echo "$g" | tr . /)/$a/$v/$a-$v.pom"
+    [ -f "$pom" ] && resolve "$pom" >> /tmp/queue.txt || true
+  else
+    echo "$gav" >> /tmp/failed.txt
+  fi
 done
 
-echo "=== org.openprojectx artifacts in local repo ==="
+echo "=== org.openprojectx artifacts fetched ==="
 find /root/.m2/repository/org/openprojectx -name '*.jar' | sort
+if [ -s /tmp/failed.txt ]; then
+  echo "=== openprojectx artifacts with no resolvable jar (skipped) ==="
+  sort -u /tmp/failed.txt
+fi
+# Sanity check: a config or network problem that fetches nothing must fail the build loudly.
+find /root/.m2/repository/org/openprojectx -name '*.jar' | grep -q . \
+  || { echo "ERROR: no org.openprojectx jars were fetched"; exit 1; }
 SCRIPT
 
 CMD ["bash"]
