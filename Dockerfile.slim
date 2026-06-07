@@ -17,15 +17,18 @@ ENV HTTP_PROXY=${HTTP_PROXY} HTTPS_PROXY=${HTTPS_PROXY} NO_PROXY=${NO_PROXY} \
 
 WORKDIR /workspace/spark-test
 
-# Only the project pom is needed -- it holds the org.openprojectx.* versions.
-COPY pom.xml ./pom.xml
+# Only the project pom is needed -- it holds the org.openprojectx.* versions. Copy it OUTSIDE the
+# working directory so Maven does not auto-discover it as a (broken) reactor: its <modules> point at
+# child dirs that are not in this build context, which would make every dependency:get fail.
+COPY pom.xml /tmp/project-pom.xml
 
 RUN <<'SCRIPT'
 set -eux
 REPOS="central::default::https://repo1.maven.org/maven2,cloudera::default::https://repository.cloudera.com/repository/cloudera-repos/,confluent::default::https://packages.confluent.io/maven/"
-BDT="$(grep -oE '<bigdata-test.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
-JDNS="$(grep -oE '<java-dns.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
-HNL="$(grep -oE '<hadoop-native-loader.version>[^<]+' pom.xml | head -1 | sed 's/.*>//')"
+POM=/tmp/project-pom.xml
+BDT="$(grep -oE '<bigdata-test.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
+JDNS="$(grep -oE '<java-dns.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
+HNL="$(grep -oE '<hadoop-native-loader.version>[^<]+' "$POM" | head -1 | sed 's/.*>//')"
 
 # Extracts org.openprojectx.* dependencies (with literal versions) from a POM.
 cat > /tmp/op-deps.awk <<'AWK'
