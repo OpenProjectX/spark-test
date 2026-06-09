@@ -34,6 +34,13 @@
                 <version>${bigdata-test.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>extensions</artifactId>
+                <version>${bigdata-test.version}</version>
+                <classifier>runtime</classifier>
+            </dependency>
+
             <!-- Gradle plugin marker artifact: by Gradle convention its groupId is the plugin id
                  itself (org.openprojectx.bigdata-test, with a hyphen), NOT the .core groupId. It is
                  published at org/openprojectx/bigdata-test/org.openprojectx.bigdata-test.gradle.plugin/. -->

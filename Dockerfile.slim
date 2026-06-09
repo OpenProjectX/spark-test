@@ -54,14 +54,15 @@ awk '
 cat > /tmp/op-deps.awk <<'AWK'
 function flush() {
   if (depth && g ~ /^org\.openprojectx/ && g !~ /\.example$/ && a != "" && v != "")
-    print g ":" a ":" v
-  depth=0; g=a=v=""
+    print g ":" a ":" v (c != "" ? ":" c : "")
+  depth=0; g=a=v=c=""
 }
-/<dependency>|<plugin>/     { g=a=v=""; depth=1; next }
+/<dependency>|<plugin>/     { g=a=v=c=""; depth=1; next }
 /<\/dependency>|<\/plugin>/ { flush(); next }
 depth && /<groupId>/    { t=$0; gsub(/.*<groupId>|<\/groupId>.*/,"",t);    g=t }
 depth && /<artifactId>/ { t=$0; gsub(/.*<artifactId>|<\/artifactId>.*/,"",t); a=t }
 depth && /<version>/    { t=$0; gsub(/.*<version>|<\/version>.*/,"",t);    v=t }
+depth && /<classifier>/ { t=$0; gsub(/.*<classifier>|<\/classifier>.*/,"",t); c=t }
 AWK
 
 # resolve = extract openprojectx coords from the given POM(s), resolve ${...} versions, and keep
@@ -82,8 +83,14 @@ while [ -s /tmp/queue.txt ]; do
   gav="$(head -1 /tmp/queue.txt)"; sed -i 1d /tmp/queue.txt
   grep -qxF "$gav" /tmp/done.txt && continue
   echo "$gav" >> /tmp/done.txt
-  g="${gav%%:*}"; rest="${gav#*:}"; a="${rest%%:*}"; v="${rest##*:}"
-  if mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v"; then
+  # gav is g:a:v or, for a classified artifact, g:a:v:classifier (coords carry no colons).
+  IFS=: read -r g a v c <<EOF
+$gav
+EOF
+  # A classifier selects a specific secondary jar (e.g. extensions:...:runtime -> -runtime.jar);
+  # plain entries fetch the main jar. dependency:get coords are groupId:artifactId:version:packaging:classifier.
+  art="$g:$a:$v"; [ -n "$c" ] && art="$g:$a:$v:jar:$c"
+  if mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$art"; then
     mvn -B dependency:get -Dtransitive=false -DremoteRepositories="$REPOS" -Dartifact="$g:$a:$v:jar:sources" || true
     pom="/root/.m2/repository/$(echo "$g" | tr . /)/$a/$v/$a-$v.pom"
     [ -f "$pom" ] && resolve "$pom" >> /tmp/queue.txt || true
