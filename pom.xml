@@ -24,7 +24,7 @@
         <maven.compiler.release>17</maven.compiler.release>
 
         <!-- bigdata-test framework, published locally as 0.1.1-SNAPSHOT -->
-        <bigdata-test.version>0.1.37</bigdata-test.version>
+        <bigdata-test.version>0.1.38</bigdata-test.version>
 
         <!-- shared, version-line independent dependencies -->
         <junit.version>5.11.4</junit.version>
