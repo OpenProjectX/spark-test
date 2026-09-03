@@ -69,6 +69,11 @@
             <artifactId>extensions</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.openprojectx.bigdata.test.core</groupId>
+            <artifactId>extensions-spark-4</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Spark (Apache line) -->
         <dependency>

@@ -33,6 +33,11 @@
                 <artifactId>extensions</artifactId>
                 <version>${bigdata-test.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.openprojectx.bigdata.test.core</groupId>
+                <artifactId>extensions-spark-4</artifactId>
+                <version>${bigdata-test.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.openprojectx.bigdata.test.core</groupId>
