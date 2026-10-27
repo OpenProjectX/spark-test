@@ -23,8 +23,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
 
-        <!-- bigdata-test framework, published locally as 0.1.1-SNAPSHOT -->
-        <bigdata-test.version>0.1.47</bigdata-test.version>
+        <!-- bigdata-test framework version shared by all modules -->
+        <bigdata-test.version>0.1.48</bigdata-test.version>
 
         <!-- shared, version-line independent dependencies -->
         <junit.version>5.11.4</junit.version>
